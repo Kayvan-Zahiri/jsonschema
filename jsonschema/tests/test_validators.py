@@ -1316,6 +1316,72 @@ class TestValidationErrorDetails(TestCase):
             ),
         )
 
+    def test_boolean_schema_False_in_properties(self):
+        schema = {"properties": {"foo": True, "bar": False}}
+        validator = validators.Draft7Validator(schema)
+        error, = validator.iter_errors({"foo": 1, "bar": 2})
+
+        self.assertEqual(
+            (
+                error.message,
+                error.instance,
+                error.absolute_path,
+                error.schema_path,
+                error.json_path,
+            ),
+            (
+                "False schema does not allow 2",
+                2,
+                deque(["bar"]),
+                deque(["properties", "bar"]),
+                "$.bar",
+            ),
+        )
+
+    def test_boolean_schema_False_in_prefixItems(self):
+        schema = {"prefixItems": [True, False]}
+        validator = validators.Draft202012Validator(schema)
+        error, = validator.iter_errors([1, "foo"])
+
+        self.assertEqual(
+            (
+                error.message,
+                error.instance,
+                error.absolute_path,
+                error.schema_path,
+                error.json_path,
+            ),
+            (
+                "False schema does not allow 'foo'",
+                "foo",
+                deque([1]),
+                deque(["prefixItems", 1]),
+                "$[1]",
+            ),
+        )
+
+    def test_boolean_schema_False_in_then(self):
+        schema = {"if": {"const": 12}, "then": False}
+        validator = validators.Draft7Validator(schema)
+        error, = validator.iter_errors(12)
+
+        self.assertEqual(
+            (
+                error.message,
+                error.instance,
+                error.absolute_path,
+                error.schema_path,
+                error.json_path,
+            ),
+            (
+                "False schema does not allow 12",
+                12,
+                deque(),
+                deque(["then"]),
+                "$",
+            ),
+        )
+
     def test_ref(self):
         ref, schema = "someRef", {"additionalProperties": {"type": "integer"}}
         validator = validators.Draft7Validator(
