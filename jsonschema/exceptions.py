@@ -95,7 +95,9 @@ class _Error(Exception):
         self.parent = parent
         self._type_checker = type_checker
 
-        for error in context:
+        # Walk the stored list. ``context`` may be a one-shot iterator,
+        # already consumed by ``list(context)`` above.
+        for error in self.context:
             error.parent = self
 
     def __repr__(self) -> str:

@@ -1113,3 +1113,38 @@ class TestJsonPathRendering(TestCase):
 
     def test_open_bracket(self):
         self.validate_json_path_rendering("[", "$['[']")
+
+
+class TestIteratorContextParents(TestCase):
+    def test_iterator_context_sets_parent_and_absolute_path(self):
+        child = exceptions.ValidationError(
+            "child", path=["name"], schema_path=[0, "type"]
+        )
+        parent = exceptions.ValidationError(
+            "parent",
+            path=["record"],
+            schema_path=["properties", "record", "anyOf"],
+            context=iter([child]),
+        )
+        self.assertEqual(parent.context, [child])
+        self.assertIs(child.parent, parent)
+        self.assertEqual(child.json_path, "$.record.name")
+
+        schema_child = exceptions.SchemaError("child", path=["name"])
+        schema_parent = exceptions.SchemaError(
+            "parent", path=["record"], context=iter([schema_child])
+        )
+        self.assertIs(schema_child.parent, schema_parent)
+        self.assertEqual(list(schema_child.absolute_path), ["record", "name"])
+
+        listed = exceptions.ValidationError("child", path=["name"])
+        listed_parent = exceptions.ValidationError(
+            "parent", path=["record"], context=[listed]
+        )
+        self.assertIs(listed.parent, listed_parent)
+
+        tupled = exceptions.ValidationError("child", path=["name"])
+        tupled_parent = exceptions.ValidationError(
+            "parent", path=["record"], context=(tupled,)
+        )
+        self.assertIs(tupled.parent, tupled_parent)
